@@ -2,85 +2,61 @@
 #ifndef GRAPH_REASONING_H
 #define GRAPH_REASONING_H
 
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <Eigen/Dense>
 #include "llama.h"
+#include <vector>
+#include <string>
+#include <unordered_map>
 
-namespace llama {
-
-struct GraphNode {
+// Node in reasoning graph
+struct llama_graph_node {
     int id;
+    std::vector<float> embedding;
     std::string content;
-    Eigen::VectorXf embedding;
 };
 
-struct GraphEdge {
-    int source_id;
-    int target_id;
+// Edge in reasoning graph
+struct llama_graph_edge {
+    int source;
+    int target;
     float weight;
-    bool is_surprising; // Semantically distant but structurally connected
+    bool is_surprising;
 };
 
-class ReasoningGraph {
-public:
-    ReasoningGraph();
+// Graph reasoning structure
+struct llama_graph_reasoning {
+    // Graph components
+    std::vector<llama_graph_node> nodes;
+    std::vector<llama_graph_edge> edges;
     
-    // Graph construction methods
-    int add_node(const std::string& content, const Eigen::VectorXf& embedding);
-    void add_edge(int source_id, int target_id, float weight = 1.0f);
+    // Parameters
+    float d_target;        // Critical discovery parameter target
+    float alpha_target;    // Surprising edge fraction target
+    float lambda_d;        // Weight for discovery parameter
+    float lambda_se;       // Weight for semantic entropy
+    float lambda_alpha;    // Weight for surprising edge fraction
     
-    // Entropy calculations
-    float compute_structural_entropy() const; // Von Neumann graph entropy
-    float compute_semantic_entropy() const;   // Based on embedding similarity
-    float compute_critical_discovery_parameter() const; // D = (Sstruct - Ssem) / (Sstruct + Ssem)
-    float compute_surprising_edge_fraction() const;    // α
-    
-    // Utilities
-    void update_node_embeddings(llama_context* ctx);
-    std::vector<int> detect_communities() const; // Louvain method
-    
-private:
-    std::vector<GraphNode> nodes;
-    std::vector<GraphEdge> edges;
-    Eigen::MatrixXf adjacency_matrix;
-    Eigen::MatrixXf semantic_adjacency_matrix;
-    
-    // Helper methods
-    void update_adjacency_matrices();
-    Eigen::MatrixXf compute_normalized_laplacian(const Eigen::MatrixXf& adj_matrix) const;
+    // State tracking
+    float structural_entropy;
+    float semantic_entropy;
+    float critical_discovery_param;
+    float surprising_edge_fraction;
 };
 
-// Reinforcement learning for graph reasoning
-class GraphReasoningRL {
-public:
-    GraphReasoningRL(ReasoningGraph* graph, llama_context* ctx);
-    
-    // RL parameters
-    void set_target_parameters(float d_target, float alpha_target);
-    void set_lambda_weights(float lambda_d, float lambda_se, float lambda_alpha);
-    
-    // Compute reward based on graph state
-    float compute_reward();
-    
-    // Update model weights based on reward and actions
-    void update_model(llama_context* ctx, const std::vector<llama_token>& tokens, float reward);
-    
-private:
-    ReasoningGraph* graph;
-    llama_context* ctx;
-    
-    // Target parameters
-    float d_target;
-    float alpha_target;
-    
-    // Lambda weights for different reward components
-    float lambda_d;
-    float lambda_se;
-    float lambda_alpha;
-};
+// Graph reasoning functions
+LLAMA_API struct llama_graph_reasoning * llama_graph_reasoning_init();
+LLAMA_API void llama_graph_reasoning_free(struct llama_graph_reasoning * gr);
 
-} // namespace llama
+// Extract graph from reasoning text
+LLAMA_API bool llama_graph_extract(
+    struct llama_graph_reasoning * gr,
+    struct llama_context * ctx,
+    const char * text,
+    size_t text_len);
+
+// Calculate graph metrics
+LLAMA_API void llama_graph_update_metrics(struct llama_graph_reasoning * gr);
+
+// Calculate reward for current graph state
+LLAMA_API float llama_graph_compute_reward(struct llama_graph_reasoning * gr);
 
 #endif // GRAPH_REASONING_H
