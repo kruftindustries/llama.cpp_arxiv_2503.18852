@@ -1,31 +1,43 @@
-// src/finetune.h
 #ifndef FINETUNE_H
 #define FINETUNE_H
 
-#include "llama.h"
-#include <vector>
+#include <stddef.h>
+#include <stdbool.h>
 
+// Forward declarations
+struct llama_model;
+struct llama_context;
+struct llama_graph_reasoning_s;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Finetune parameters
 struct llama_finetune_params {
     float learning_rate;
     float weight_decay;
-    int   batch_size;
-    int   epochs;
-    bool  use_graph_reasoning;
+    int batch_size;
+    int epochs;
+    bool use_graph_reasoning;
 };
 
-// Initialize model for finetuning
-LLAMA_API bool llama_model_finetune_init(struct llama_model * model);
+// Default parameters
+struct llama_finetune_params llama_finetune_default_params();
 
-// Finetune on text data
-LLAMA_API bool llama_finetune(
-    struct llama_context * ctx,
-    const llama_token * tokens,
-    int n_tokens,
-    const llama_finetune_params * params);
+// Initialize model for finetuning
+bool llama_model_finetune_init(struct llama_model* model);
+
+// Finetune on token sequence
+bool llama_finetune(struct llama_context* ctx, 
+                   const int* tokens, int n_tokens,
+                   const struct llama_finetune_params* params);
 
 // Save finetuned model
-LLAMA_API bool llama_model_finetune_save(
-    struct llama_model * model,
-    const char * filename);
+bool llama_model_finetune_save(struct llama_model* model, const char* filename);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // FINETUNE_H
